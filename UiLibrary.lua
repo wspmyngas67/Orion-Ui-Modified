@@ -465,7 +465,7 @@ local function CreateToggleButton(MainWindow)
 		Parent = Orion,
 		Name = "OrionToggleBtn",
 		Size = UDim2.new(0, 48, 0, 48),
-		Position = UDim2.new(0, 12, 0, 12),
+		Position = UDim2.new(0, 12, 0, 80),
 		BackgroundTransparency = 0,
 		Visible = true,
 		ZIndex = 100,
