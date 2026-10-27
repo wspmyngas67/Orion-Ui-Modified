@@ -458,7 +458,7 @@ function OrionLib:Init()
 end	
 
 -- ============================================================
--- FLOATING TOGGLE BUTTON (animated show/hide)
+-- FLOATING TOGGLE BUTTON
 -- ============================================================
 local function CreateToggleButton(MainWindow, ShowWindow, HideWindow)
 	local ToggleBtn = SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(12, 12, 16), 0, 30), {
@@ -496,7 +496,6 @@ local function CreateToggleButton(MainWindow, ShowWindow, HideWindow)
 		end
 	end)
 
-	-- Draggable on mouse + touch
 	local dragging, dragInput, startPos, startBtnPos = false, nil, nil, nil
 	Click.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1
@@ -680,51 +679,57 @@ function OrionLib:MakeWindow(WindowConfig)
 		MainWindow.Position = UDim2.new(0.5, -MainWindow.Size.X.Offset/2, 0.5, -MainWindow.Size.Y.Offset/2)
 	end
 
-	-- Save original target size for animation restore
-	MainWindow:SetAttribute("TargetSize", MainWindow.Size)
-	MainWindow:SetAttribute("Showing", true)
-
 	AddDraggingFunctionality(DragPoint, MainWindow)
 
 	-- ============================================================
-	-- HIDE / SHOW ANIMATION (scale + fade)
+	-- HIDE / SHOW ANIMATION (spam-click safe)
 	-- ============================================================
 	local ShowWindow, HideWindow
 
 	do
+		local TargetSize = MainWindow.Size
+		local ActiveTween = nil
+
+		local function stopTween()
+			if ActiveTween then
+				ActiveTween:Cancel()
+				ActiveTween = nil
+			end
+		end
+
 		local function animate(visible)
+			stopTween()
+
 			if visible then
 				MainWindow.Visible = true
-				local targetSize = MainWindow:GetAttribute("TargetSize") or UDim2.new(0, 615, 0, 344)
-				MainWindow.Size = UDim2.new(0, 0, 0, 0)
-				MainWindow.BackgroundTransparency = 1
-				TweenService:Create(MainWindow, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-					Size = targetSize,
+				ActiveTween = TweenService:Create(MainWindow, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+					Size = TargetSize,
 					BackgroundTransparency = 0
-				}):Play()
+				})
+				ActiveTween:Play()
+
 				for _, child in ipairs(MainWindow:GetDescendants()) do
 					if child:IsA("UIStroke") then
-						child.Transparency = 1
 						TweenService:Create(child, TweenInfo.new(0.3), {Transparency = 0}):Play()
 					end
 				end
 			else
-				MainWindow:SetAttribute("TargetSize", MainWindow.Size)
-				local hideTween = TweenService:Create(MainWindow, TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {
+				ActiveTween = TweenService:Create(MainWindow, TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {
 					Size = UDim2.new(0, 0, 0, 0),
 					BackgroundTransparency = 1
 				})
+				ActiveTween.Completed:Connect(function(state)
+					if state == Enum.PlaybackState.Completed and not MainWindow:GetAttribute("Showing") then
+						MainWindow.Visible = false
+					end
+				end)
+				ActiveTween:Play()
+
 				for _, child in ipairs(MainWindow:GetDescendants()) do
 					if child:IsA("UIStroke") then
 						TweenService:Create(child, TweenInfo.new(0.2), {Transparency = 1}):Play()
 					end
 				end
-				hideTween.Completed:Connect(function()
-					if not MainWindow:GetAttribute("Showing") then
-						MainWindow.Visible = false
-					end
-				end)
-				hideTween:Play()
 			end
 		end
 
@@ -740,11 +745,12 @@ function OrionLib:MakeWindow(WindowConfig)
 		end
 	end
 
+	MainWindow:SetAttribute("Showing", true)
+
 	if WindowConfig.UseToggleButton then
 		CreateToggleButton(MainWindow, ShowWindow, HideWindow)
 	end
 
-	-- RightShift fallback (keyboard)
 	AddConnection(UserInputService.InputBegan, function(Input)
 		if Input.KeyCode == Enum.KeyCode.RightShift then
 			if MainWindow.Visible then
@@ -1075,7 +1081,7 @@ function OrionLib:MakeWindow(WindowConfig)
 			end  
 
 			-- ============================================================
-			-- REDESIGNED SLIDER (title + value on top, slim bar below)
+			-- REDESIGNED SLIDER
 			-- ============================================================
 			function ElementFunction:AddSlider(SliderConfig)
 				SliderConfig = SliderConfig or {}
