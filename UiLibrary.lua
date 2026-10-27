@@ -458,21 +458,21 @@ function OrionLib:Init()
 end	
 
 -- ============================================================
--- FLOATING TOGGLE BUTTON
+-- FLOATING TOGGLE BUTTON (always visible, top-left, draggable)
 -- ============================================================
 local function CreateToggleButton(MainWindow)
 	local ToggleBtn = SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(12, 12, 16), 0, 30), {
 		Parent = Orion,
 		Name = "OrionToggleBtn",
-		Size = UDim2.new(0, 52, 0, 52),
-		Position = UDim2.new(0, 16, 0.5, -26),
+		Size = UDim2.new(0, 48, 0, 48),
+		Position = UDim2.new(0, 12, 0, 12),
 		BackgroundTransparency = 0,
-		Visible = false,
+		Visible = true,
 		ZIndex = 100,
 	}), {
 		MakeElement("Stroke", Color3.fromRGB(80, 140, 210), 1.5),
 		SetProps(MakeElement("Image", "rbxassetid://8834748103"), {
-			Size = UDim2.new(0, 28, 0, 28),
+			Size = UDim2.new(0, 26, 0, 26),
 			Position = UDim2.new(0.5, 0, 0.5, 0),
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			ImageColor3 = Color3.fromRGB(110, 190, 255),
@@ -490,7 +490,6 @@ local function CreateToggleButton(MainWindow)
 	local Click = ToggleBtn.Click
 	AddConnection(Click.MouseButton1Click, function()
 		MainWindow.Visible = not MainWindow.Visible
-		ToggleBtn.Visible = not MainWindow.Visible
 	end)
 
 	-- Draggable on mouse + touch
@@ -512,7 +511,6 @@ local function CreateToggleButton(MainWindow)
 	UserInputService.InputChanged:Connect(function(input)
 		if input == dragInput and dragging then
 			local delta = input.Position - startPos
-			-- Only drag if moved a bit (so a tap still counts as click)
 			if math.abs(delta.X) > 4 or math.abs(delta.Y) > 4 then
 				ToggleBtn.Position = UDim2.new(
 					startBtnPos.X.Scale, startBtnPos.X.Offset + delta.X,
@@ -533,7 +531,6 @@ end
 
 function OrionLib:MakeWindow(WindowConfig)
 	local FirstTab = true
-	local Minimized = false
 	local Loaded = false
 	local UIHidden = false
 
@@ -570,28 +567,6 @@ function OrionLib:MakeWindow(WindowConfig)
 	AddConnection(TabHolder.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"), function()
 		TabHolder.CanvasSize = UDim2.new(0, 0, 0, TabHolder.UIListLayout.AbsoluteContentSize.Y + 16)
 	end)
-
-	local CloseBtn = SetChildren(SetProps(MakeElement("Button"), {
-		Size = UDim2.new(0.5, 0, 1, 0),
-		Position = UDim2.new(0.5, 0, 0, 0),
-		BackgroundTransparency = 1
-	}), {
-		AddThemeObject(SetProps(MakeElement("Image", "rbxassetid://7072725342"), {
-			Position = UDim2.new(0, 9, 0, 6),
-			Size = UDim2.new(0, 18, 0, 18)
-		}), "Text")
-	})
-
-	local MinimizeBtn = SetChildren(SetProps(MakeElement("Button"), {
-		Size = UDim2.new(0.5, 0, 1, 0),
-		BackgroundTransparency = 1
-	}), {
-		AddThemeObject(SetProps(MakeElement("Image", "rbxassetid://7072719338"), {
-			Position = UDim2.new(0, 9, 0, 6),
-			Size = UDim2.new(0, 18, 0, 18),
-			Name = "Ico"
-		}), "Text")
-	})
 
 	local DragPoint = SetProps(MakeElement("TFrame"), {
 		Size = UDim2.new(1, 0, 0, 50)
@@ -681,18 +656,6 @@ function OrionLib:MakeWindow(WindowConfig)
 		}), {
 			WindowName,
 			WindowTopBarLine,
-			AddThemeObject(SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(255, 255, 255), 0, 7), {
-				Size = UDim2.new(0, 70, 0, 30),
-				Position = UDim2.new(1, -90, 0, 10)
-			}), {
-				AddThemeObject(MakeElement("Stroke"), "Stroke"),
-				AddThemeObject(SetProps(MakeElement("Frame"), {
-					Size = UDim2.new(0, 1, 1, 0),
-					Position = UDim2.new(0.5, 0, 0, 0)
-				}), "Stroke"), 
-				CloseBtn,
-				MinimizeBtn
-			}), "Second"), 
 		}),
 		DragPoint,
 		WindowStuff
@@ -720,48 +683,11 @@ function OrionLib:MakeWindow(WindowConfig)
 		CreateToggleButton(MainWindow)
 	end
 
-	AddConnection(CloseBtn.MouseButton1Up, function()
-		MainWindow.Visible = false
-		UIHidden = true
-		if OrionLib.ToggleButton then
-			OrionLib.ToggleButton.Visible = true
-		end
-		OrionLib:MakeNotification({
-			Name = "Interface Hidden",
-			Content = "Tap the floating button to reopen the interface",
-			Time = 5
-		})
-		WindowConfig.CloseCallback()
-	end)
-
+	-- RightShift toggle (keyboard fallback)
 	AddConnection(UserInputService.InputBegan, function(Input)
-		if Input.KeyCode == Enum.KeyCode.RightShift and UIHidden then
-			MainWindow.Visible = true
-			UIHidden = false
-			if OrionLib.ToggleButton then
-				OrionLib.ToggleButton.Visible = false
-			end
+		if Input.KeyCode == Enum.KeyCode.RightShift then
+			MainWindow.Visible = not MainWindow.Visible
 		end
-	end)
-
-	AddConnection(MinimizeBtn.MouseButton1Up, function()
-		if Minimized then
-			TweenService:Create(MainWindow, TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Size = UDim2.new(0, 615, 0, 344)}):Play()
-			MinimizeBtn.Ico.Image = "rbxassetid://7072719338"
-			wait(.02)
-			MainWindow.ClipsDescendants = false
-			WindowStuff.Visible = true
-			WindowTopBarLine.Visible = true
-		else
-			MainWindow.ClipsDescendants = true
-			WindowTopBarLine.Visible = false
-			MinimizeBtn.Ico.Image = "rbxassetid://7072720870"
-
-			TweenService:Create(MainWindow, TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Size = UDim2.new(0, WindowName.TextBounds.X + 140, 0, 50)}):Play()
-			wait(0.1)
-			WindowStuff.Visible = false	
-		end
-		Minimized = not Minimized    
 	end)
 
 	local function LoadSequence()
@@ -870,8 +796,7 @@ function OrionLib:MakeWindow(WindowConfig)
 				end    
 			end
 			for _, ItemContainer in next, MainWindow:GetChildren() do
-				if ItemContainer.Name == "ItemContainer" then
-					ItemContainer.Visible = false
+				if ItemContainer.Name == "ItemContainer" then					ItemContainer.Visible = false
 				end    
 			end  
 			TweenService:Create(TabFrame.Ico, TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {ImageTransparency = 0}):Play()
@@ -1083,9 +1008,6 @@ function OrionLib:MakeWindow(WindowConfig)
 				return Toggle
 			end  
 
-			-- ============================================================
-			-- SLIDER (mobile-patched)
-			-- ============================================================
 			function ElementFunction:AddSlider(SliderConfig)
 				SliderConfig = SliderConfig or {}
 				SliderConfig.Name = SliderConfig.Name or "Slider"
@@ -1213,9 +1135,6 @@ function OrionLib:MakeWindow(WindowConfig)
 				return Slider
 			end  
 
-			-- ============================================================
-			-- DROPDOWN (mobile-patched)
-			-- ============================================================
 			function ElementFunction:AddDropdown(DropdownConfig)
 				DropdownConfig = DropdownConfig or {}
 				DropdownConfig.Name = DropdownConfig.Name or "Dropdown"
@@ -1375,9 +1294,6 @@ function OrionLib:MakeWindow(WindowConfig)
 				return Dropdown
 			end
 
-			-- ============================================================
-			-- BIND (mobile-patched)
-			-- ============================================================
 			function ElementFunction:AddBind(BindConfig)
 				BindConfig = BindConfig or {}
 				BindConfig.Name = BindConfig.Name or "Bind"
@@ -1510,7 +1426,7 @@ function OrionLib:MakeWindow(WindowConfig)
 				TextboxConfig.Name = TextboxConfig.Name or "Textbox"
 				TextboxConfig.Default = TextboxConfig.Default or ""
 				TextboxConfig.TextDisappear = TextboxConfig.TextDisappear or false
-				TextboxConfig.Callback = TextboxConfig.Callback or function() end
+					TextboxConfig.Callback = TextboxConfig.Callback or function() end
 
 				local Click = SetProps(MakeElement("Button"), {
 					Size = UDim2.new(1, 0, 1, 0)
@@ -1586,9 +1502,6 @@ function OrionLib:MakeWindow(WindowConfig)
 				end)
 			end 
 
-			-- ============================================================
-			-- COLORPICKER (mobile-patched)
-			-- ============================================================
 			function ElementFunction:AddColorpicker(ColorpickerConfig)
 				ColorpickerConfig = ColorpickerConfig or {}
 				ColorpickerConfig.Name = ColorpickerConfig.Name or "Colorpicker"
@@ -1873,7 +1786,7 @@ function OrionLib:MakeWindow(WindowConfig)
 
 	OrionLib:MakeNotification({
 		Name = "Modified Orion UI",
-		Content = "Hello Im Verity",
+		Content = "hello im verity",
 		Time = 6
 	})
 
